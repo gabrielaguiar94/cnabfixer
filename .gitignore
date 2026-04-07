@@ -1,0 +1,87 @@
+# =========================================================
+# GERAL
+# =========================================================
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+*~
+.idea/
+.vscode/
+
+# =========================================================
+# BACKEND - PYTHON / FASTAPI
+# =========================================================
+# Virtualenv
+.venv/
+venv/
+env/
+
+backend/app/layouts/*.json
+
+# Python cache
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+.coverage.*
+htmlcov/
+
+# Build / packaging
+build/
+dist/
+*.egg-info/
+.eggs/
+pip-wheel-metadata/
+
+# Logs
+*.log
+
+# Env files
+.env
+.env.*
+!.env.example
+
+# Runtime / local output
+outputs/
+uploads/
+
+# =========================================================
+# FRONTEND - REACT / VITE / TYPESCRIPT
+# =========================================================
+node_modules/
+dist/
+dist-ssr/
+coverage/
+vite.svg
+*.tsbuildinfo
+
+# Front local env
+frontend/.env
+frontend/.env.*
+!frontend/.env.example
+
+# =========================================================
+# ARQUIVOS DE TESTE / LOCAIS
+# =========================================================
+# CNABs locais usados para teste
+*.REM
+*.rem
+*.RET
+*.ret
+*.TXT
+*.txt
+
+# Se quiser versionar exemplos, mantenha-os em uma pasta
+# como examples/ ou samples/ e remova esta regra depois.
+
+# =========================================================
+# SISTEMA / TEMP
+# =========================================================
+tmp/
+temp/
+*.tmp
