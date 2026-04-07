@@ -6,26 +6,44 @@ import { JsonCard } from "./components/JsonCard";
 import { OperationCard } from "./components/OperationCard";
 import { TitlesTable } from "./components/TitlesTable";
 import { TitleDetailsCard } from "./components/TitleDetailsCard";
+import { ResultOverviewCard } from "./components/ResultOverviewCard";
 import type { ApiResponse, BusinessTitle } from "./types";
 
-const API_BASE = "http://localhost:8765";
+const API_BASE = import.meta.env.VITE_API_BASE || "http://localhost:8765";
 
 export default function App() {
   const [file, setFile] = useState<File | null>(null);
-  const [loading, setLoading] = useState<boolean>(false);
+  const [loading, setLoading] = useState(false);
   const [response, setResponse] = useState<ApiResponse | null>(null);
-  const [error, setError] = useState<string>("");
-  const [selectedTitleIndex, setSelectedTitleIndex] = useState<number>(0);
-  const [showTechnicalData, setShowTechnicalData] = useState<boolean>(false);
+  const [error, setError] = useState("");
+  const [selectedTitleIndex, setSelectedTitleIndex] = useState(0);
+  const [showTechnicalData, setShowTechnicalData] = useState(false);
+  const [titleQuery, setTitleQuery] = useState("");
 
-  const titles = response?.business_view?.titulos ?? [];
+  const allTitles = response?.business_view?.titulos ?? [];
+
+  const filteredTitles = useMemo(() => {
+    const query = titleQuery.trim().toLowerCase();
+    if (!query) return allTitles;
+
+    return allTitles.filter((item) => {
+      return [
+        item.numero_documento,
+        item.sacado,
+        item.cedente_nome,
+        item.cedente_cnpj,
+        item.numero_inscricao_sacado,
+      ]
+        .join(" ")
+        .toLowerCase()
+        .includes(query);
+    });
+  }, [allTitles, titleQuery]);
+
   const selectedTitle: BusinessTitle | null = useMemo(() => {
-    if (!titles.length) return null;
-    return titles[selectedTitleIndex] ?? titles[0];
-  }, [titles, selectedTitleIndex]);
-
-  const issueCount = response?.issues?.length ?? 0;
-  const hasCorrectedFile = Boolean(response?.output_file);
+    if (!filteredTitles.length) return null;
+    return filteredTitles[selectedTitleIndex] ?? filteredTitles[0];
+  }, [filteredTitles, selectedTitleIndex]);
 
   async function submit(): Promise<void> {
     if (!file) {
@@ -98,48 +116,62 @@ export default function App() {
     setError("");
     setSelectedTitleIndex(0);
     setShowTechnicalData(false);
+    setTitleQuery("");
   }
 
   return (
-    <div className="page">
-      <div className="container">
-        <header className="hero">
-          <div className="hero-badge">CNAB • Validação posicional</div>
-          <h1>CNAB Fixer</h1>
-          <p>
-            Analise, corrija e visualize arquivos CNAB com foco em aderência de
-            layout e leitura estruturada da operação.
+    <div className="min-h-screen bg-slate-50 text-slate-900">
+      <div className="mx-auto max-w-[1700px] px-8 py-10 lg:px-10 lg:py-12">
+        <header className="mb-8">
+          <h1 className="text-3xl font-semibold tracking-tight text-slate-950">
+            CNAB Fixer
+          </h1>
+          <p className="mt-2 text-sm text-slate-600 sm:text-base">
+            Valide, corrija e visualize arquivos CNAB com foco em aderência posicional.
           </p>
         </header>
 
-        <section className="upload-card">
-          <div className="upload-left">
-            <span className="section-kicker">Entrada</span>
-            <h2>Processar arquivo</h2>
-            <p className="section-text">
-              Envie um arquivo CNAB para validar regras de posição, corrigir o
-              que for seguro e visualizar títulos da operação.
-            </p>
+        <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
+          <div className="grid gap-6 xl:grid-cols-[1.4fr_0.9fr]">
+            <div>
+              <label
+                htmlFor="cnab-file"
+                className="block text-sm font-medium text-slate-700"
+              >
+                Arquivo CNAB
+              </label>
 
-            <label className="upload-dropzone" htmlFor="cnab-file">
-              <input
-                id="cnab-file"
-                className="hidden-input"
-                type="file"
-                accept=".rem,.txt"
-                onChange={(e) => setFile(e.target.files?.[0] ?? null)}
-              />
-              <div className="upload-dropzone-title">
-                {file ? "Arquivo selecionado" : "Clique para selecionar o arquivo"}
-              </div>
-              <div className="upload-dropzone-subtitle">
-                {file ? file.name : "Formatos aceitos: .REM e .TXT"}
-              </div>
-            </label>
+              <label
+                htmlFor="cnab-file"
+                className="mt-3 flex cursor-pointer flex-col rounded-2xl border border-dashed border-slate-300 bg-slate-50 p-5 transition hover:border-slate-400 hover:bg-slate-100"
+              >
+                <input
+                  id="cnab-file"
+                  className="hidden"
+                  type="file"
+                  accept=".rem,.txt"
+                  onChange={(e) => setFile(e.target.files?.[0] ?? null)}
+                />
 
-            <div className="toolbar">
+                <span className="text-sm font-semibold text-slate-900">
+                  {file ? file.name : "Clique para selecionar um arquivo .REM ou .TXT"}
+                </span>
+
+                <span className="mt-1 text-sm text-slate-500">
+                  {file ? "Arquivo pronto para processamento" : "O sistema valida, corrige e monta a visão da operação"}
+                </span>
+              </label>
+
+              {error && (
+                <div className="mt-4 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+                  {error}
+                </div>
+              )}
+            </div>
+
+            <div className="flex flex-wrap gap-3 lg:justify-end">
               <button
-                className="btn btn-primary"
+                className="inline-flex h-11 items-center justify-center rounded-xl bg-slate-950 px-5 text-sm font-medium text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
                 onClick={submit}
                 disabled={loading}
                 type="button"
@@ -148,7 +180,7 @@ export default function App() {
               </button>
 
               <button
-                className="btn btn-secondary"
+                className="inline-flex h-11 items-center justify-center rounded-xl border border-slate-300 bg-white px-5 text-sm font-medium text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
                 onClick={resetAll}
                 disabled={loading}
                 type="button"
@@ -156,82 +188,91 @@ export default function App() {
                 Limpar
               </button>
 
-              {hasCorrectedFile && (
+              {response?.output_file && (
                 <button
-                  className="btn btn-secondary"
+                  className="inline-flex h-11 items-center justify-center rounded-xl border border-slate-300 bg-white px-5 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
                   onClick={downloadCorrected}
-                  disabled={loading}
                   type="button"
                 >
                   Baixar corrigido
                 </button>
               )}
             </div>
-
-            {error && <div className="alert error">{error}</div>}
           </div>
 
-          <div className="upload-right">
-            <div className="quick-stat">
-              <span className="quick-stat-label">Arquivo</span>
-              <strong>{file?.name ?? "Nenhum arquivo carregado"}</strong>
+          {loading && (
+            <div className="mt-4 rounded-2xl border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-700">
+              Processando arquivo...
             </div>
-
-            <div className="quick-stat">
-              <span className="quick-stat-label">Status</span>
-              <strong>
-                {loading
-                  ? "Processando"
-                  : response
-                  ? "Arquivo processado"
-                  : "Aguardando envio"}
-              </strong>
-            </div>
-
-            <div className="quick-stat">
-              <span className="quick-stat-label">Issues encontradas</span>
-              <strong>{response ? issueCount : "-"}</strong>
-            </div>
-
-            <div className="quick-stat">
-              <span className="quick-stat-label">Arquivo corrigido</span>
-              <strong>{hasCorrectedFile ? "Disponível" : "Não gerado"}</strong>
-            </div>
-          </div>
+          )}
         </section>
 
         {response && (
-          <>
+          <div className="mt-6 space-y-6">
+            <ResultOverviewCard
+              response={response}
+              onDownload={response.output_file ? downloadCorrected : undefined}
+            />
+
             <SummaryCard response={response} />
 
             {response.business_view?.operacao && (
               <OperationCard operation={response.business_view.operacao} />
             )}
 
-            <IssuesCard response={response} />
+            {allTitles.length > 0 && (
+              <section className="rounded-3xl border border-slate-200 bg-white p-8 shadow-sm">
+                <div className="mb-5 flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+                  <div>
+                    <h2 className="text-2xl font-semibold text-slate-950">Títulos</h2>
+                    <p className="mt-1 text-sm text-slate-600">
+                      Consulte os detalhes da operação por título.
+                    </p>
+                  </div>
 
-            {titles.length > 0 && (
-              <>
-                <TitlesTable
-                  titles={titles}
-                  selectedIndex={selectedTitleIndex}
-                  onSelect={setSelectedTitleIndex}
-                />
-                <TitleDetailsCard title={selectedTitle} />
-              </>
+                  <div className="w-full lg:max-w-sm">
+                    <input
+                      value={titleQuery}
+                      onChange={(e) => {
+                        setTitleQuery(e.target.value);
+                        setSelectedTitleIndex(0);
+                      }}
+                      placeholder="Buscar por documento, sacado ou cedente"
+                      className="h-11 w-full rounded-xl border border-slate-300 bg-white px-4 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-slate-400"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid gap-6 xl:grid-cols-[1.25fr_0.75fr]">
+                  <TitlesTable
+                    titles={filteredTitles}
+                    selectedIndex={selectedTitleIndex}
+                    onSelect={setSelectedTitleIndex}
+                  />
+                  <TitleDetailsCard title={selectedTitle} />
+                </div>
+              </section>
             )}
 
-            <section className="card">
-              <div className="technical-header">
+            <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
+              <h2 className="text-2xl font-semibold text-slate-950">Pendências</h2>
+              <p className="mt-1 mb-5 text-sm text-slate-600">
+                Veja erros, avisos e correções aplicadas.
+              </p>
+              <IssuesCard response={response} />
+            </section>
+
+            <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
+              <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                 <div>
-                  <h2>Dados técnicos</h2>
-                  <p className="muted no-margin">
-                    Estrutura bruta e JSON completo para apoio técnico e futura integração.
+                  <h2 className="text-2xl font-semibold text-slate-950">Dados técnicos</h2>
+                  <p className="mt-1 text-sm text-slate-600">
+                    Exiba apenas se precisar inspecionar a estrutura do arquivo.
                   </p>
                 </div>
 
                 <button
-                  className="btn btn-secondary"
+                  className="inline-flex h-11 items-center justify-center rounded-xl border border-slate-300 bg-white px-5 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
                   type="button"
                   onClick={() => setShowTechnicalData((prev) => !prev)}
                 >
@@ -240,13 +281,13 @@ export default function App() {
               </div>
 
               {showTechnicalData && (
-                <>
+                <div className="mt-6 space-y-6">
                   <GroupedCard response={response} />
                   <JsonCard response={response} />
-                </>
+                </div>
               )}
             </section>
-          </>
+          </div>
         )}
       </div>
     </div>

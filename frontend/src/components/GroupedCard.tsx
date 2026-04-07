@@ -10,23 +10,21 @@ export function GroupedCard({ response }: Props) {
   if (!grouped) return null;
 
   return (
-    <section className="card">
-      <h2>Dados estruturados</h2>
+    <div className="space-y-6">
+      <TechnicalBlock title="Header" data={grouped.header ?? {}} />
+      <TechnicalBlock title="Detalhes" data={grouped.detalhes ?? []} />
+      <TechnicalBlock title="Trailer" data={grouped.trailer ?? {}} />
+    </div>
+  );
+}
 
-      <div className="group-box">
-        <h3>Header</h3>
-        <pre>{JSON.stringify(grouped.header ?? {}, null, 2)}</pre>
-      </div>
-
-      <div className="group-box">
-        <h3>Detalhes</h3>
-        <pre>{JSON.stringify(grouped.detalhes ?? [], null, 2)}</pre>
-      </div>
-
-      <div className="group-box">
-        <h3>Trailer</h3>
-        <pre>{JSON.stringify(grouped.trailer ?? {}, null, 2)}</pre>
-      </div>
-    </section>
+function TechnicalBlock({ title, data }: { title: string; data: unknown }) {
+  return (
+    <div className="rounded-2xl border border-slate-200 bg-slate-50 p-5">
+      <h3 className="text-lg font-semibold text-slate-950">{title}</h3>
+      <pre className="mt-4 overflow-auto rounded-2xl bg-slate-950 p-4 text-sm text-slate-100">
+        {JSON.stringify(data, null, 2)}
+      </pre>
+    </div>
   );
 }
