@@ -98,15 +98,15 @@ open_terminal() {
   return 1
 }
 
-BACKEND_CMD="cd '$BACKEND_DIR' && source .venv/bin/activate && python run.py"
-FRONTEND_CMD="cd '$FRONTEND_DIR' && npm run dev"
+BACKEND_CMD="cd '$BACKEND_DIR' && source .venv/bin/activate && uvicorn app.main:app --host 0.0.0.0 --port $BACKEND_PORT --reload"
+FRONTEND_CMD="cd '$FRONTEND_DIR' && npm run dev -- --host 0.0.0.0"
 
 echo ""
-echo "Subindo backend..."
+echo "Subindo backend com reload..."
 if ! open_terminal "CNAB Fixer Backend" "$BACKEND_CMD"; then
   echo "Não foi possível abrir terminal gráfico para o backend."
   echo "Execute manualmente:"
-  echo "cd '$BACKEND_DIR' && source .venv/bin/activate && python run.py"
+  echo "cd '$BACKEND_DIR' && source .venv/bin/activate && uvicorn app.main:app --host 0.0.0.0 --port $BACKEND_PORT --reload"
 fi
 
 sleep 2
@@ -115,10 +115,12 @@ echo "Subindo frontend..."
 if ! open_terminal "CNAB Fixer Frontend" "$FRONTEND_CMD"; then
   echo "Não foi possível abrir terminal gráfico para o frontend."
   echo "Execute manualmente:"
-  echo "cd '$FRONTEND_DIR' && npm run dev"
+  echo "cd '$FRONTEND_DIR' && npm run dev -- --host 0.0.0.0"
 fi
 
 echo ""
 echo "Serviços iniciados."
 echo "Backend esperado em:  http://localhost:$BACKEND_PORT"
 echo "Frontend esperado em: http://localhost:$FRONTEND_PORT"
+echo ""
+echo "Backend agora está com reload automático."

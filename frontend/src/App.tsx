@@ -14,6 +14,7 @@ const API_BASE = import.meta.env.VITE_API_BASE || "http://localhost:8765";
 export default function App() {
   const [file, setFile] = useState<File | null>(null);
   const [loading, setLoading] = useState(false);
+  const [downloading, setDownloading] = useState(false);
   const [response, setResponse] = useState<ApiResponse | null>(null);
   const [error, setError] = useState("");
   const [selectedTitleIndex, setSelectedTitleIndex] = useState(0);
@@ -44,6 +45,8 @@ export default function App() {
     if (!filteredTitles.length) return null;
     return filteredTitles[selectedTitleIndex] ?? filteredTitles[0];
   }, [filteredTitles, selectedTitleIndex]);
+
+  const canDownload = !!file;
 
   async function submit(): Promise<void> {
     if (!file) {
@@ -83,6 +86,9 @@ export default function App() {
     if (!file) return;
 
     try {
+      setDownloading(true);
+      setError("");
+
       const formData = new FormData();
       formData.append("file", file);
 
@@ -97,16 +103,23 @@ export default function App() {
       }
 
       const blob = await res.blob();
+      const disposition = res.headers.get("Content-Disposition");
+      const match = disposition?.match(/filename="?([^"]+)"?/i);
+      const fallbackName = file.name.replace(/(\.[^.]+)?$/, "_CORRIGIDO$1");
+      const finalName = match?.[1] || fallbackName;
+
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
-      a.download = file.name.replace(/(\.\w+)?$/, "_CORRIGIDO.REM");
+      a.download = finalName;
       document.body.appendChild(a);
       a.click();
       a.remove();
       window.URL.revokeObjectURL(url);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Erro no download");
+    } finally {
+      setDownloading(false);
     }
   }
 
@@ -117,11 +130,13 @@ export default function App() {
     setSelectedTitleIndex(0);
     setShowTechnicalData(false);
     setTitleQuery("");
+    const input = document.getElementById("cnab-file") as HTMLInputElement | null;
+    if (input) input.value = "";
   }
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900">
-      <div className="mx-auto max-w-[1700px] px-8 py-10 lg:px-10 lg:py-12">
+      <div className="mx-auto max-w-[1700px] px-8 py-8 lg:px-10 lg:py-10">
         <header className="mb-8">
           <h1 className="text-3xl font-semibold tracking-tight text-slate-950">
             CNAB Fixer
@@ -150,7 +165,13 @@ export default function App() {
                   className="hidden"
                   type="file"
                   accept=".rem,.txt"
-                  onChange={(e) => setFile(e.target.files?.[0] ?? null)}
+                  onChange={(e) => {
+                    setFile(e.target.files?.[0] ?? null);
+                    setResponse(null);
+                    setError("");
+                    setSelectedTitleIndex(0);
+                    setTitleQuery("");
+                  }}
                 />
 
                 <span className="text-sm font-semibold text-slate-900">
@@ -158,7 +179,9 @@ export default function App() {
                 </span>
 
                 <span className="mt-1 text-sm text-slate-500">
-                  {file ? "Arquivo pronto para processamento" : "O sistema valida, corrige e monta a visão da operação"}
+                  {file
+                    ? "Arquivo pronto para processamento"
+                    : "O sistema valida, corrige e monta a visão da operação"}
                 </span>
               </label>
 
@@ -173,7 +196,7 @@ export default function App() {
               <button
                 className="inline-flex h-11 items-center justify-center rounded-xl bg-slate-950 px-5 text-sm font-medium text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
                 onClick={submit}
-                disabled={loading}
+                disabled={loading || !file}
                 type="button"
               >
                 {loading ? "Processando..." : "Processar arquivo"}
@@ -181,22 +204,21 @@ export default function App() {
 
               <button
                 className="inline-flex h-11 items-center justify-center rounded-xl border border-slate-300 bg-white px-5 text-sm font-medium text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
+                onClick={downloadCorrected}
+                disabled={!canDownload || downloading}
+                type="button"
+              >
+                {downloading ? "Baixando..." : "Baixar corrigido"}
+              </button>
+
+              <button
+                className="inline-flex h-11 items-center justify-center rounded-xl border border-slate-300 bg-white px-5 text-sm font-medium text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
                 onClick={resetAll}
-                disabled={loading}
+                disabled={loading || downloading}
                 type="button"
               >
                 Limpar
               </button>
-
-              {response?.output_file && (
-                <button
-                  className="inline-flex h-11 items-center justify-center rounded-xl border border-slate-300 bg-white px-5 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
-                  onClick={downloadCorrected}
-                  type="button"
-                >
-                  Baixar corrigido
-                </button>
-              )}
             </div>
           </div>
 
@@ -209,10 +231,7 @@ export default function App() {
 
         {response && (
           <div className="mt-6 space-y-6">
-            <ResultOverviewCard
-              response={response}
-              onDownload={response.output_file ? downloadCorrected : undefined}
-            />
+            <ResultOverviewCard response={response} onDownload={downloadCorrected} />
 
             <SummaryCard response={response} />
 
@@ -257,7 +276,7 @@ export default function App() {
             <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
               <h2 className="text-2xl font-semibold text-slate-950">Pendências</h2>
               <p className="mt-1 mb-5 text-sm text-slate-600">
-                Veja erros, avisos e correções aplicadas.
+                Veja erros, avisos e correções identificadas no arquivo original.
               </p>
               <IssuesCard response={response} />
             </section>

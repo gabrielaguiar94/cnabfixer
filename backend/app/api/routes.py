@@ -1,7 +1,14 @@
 import json
+
 from fastapi import APIRouter, File, UploadFile, HTTPException
 from fastapi.responses import FileResponse, JSONResponse
-from app.services.cnab_service import process_cnab_file, parse_cnab_file, process_and_parse_cnab_file
+
+from app.services.cnab_service import (
+    process_cnab_file,
+    parse_cnab_file,
+    process_and_parse_cnab_file,
+    generate_corrected_cnab_file,
+)
 
 router = APIRouter()
 
@@ -27,7 +34,7 @@ async def validate_and_fix_cnab_and_download(file: UploadFile = File(...)):
         raise HTTPException(status_code=400, detail="Arquivo inválido")
 
     content = await file.read()
-    result = process_cnab_file(file.filename, content)
+    result = generate_corrected_cnab_file(file.filename, content)
 
     return FileResponse(
         path=result["output_path"],
@@ -44,8 +51,8 @@ async def validate_and_fix_cnab_report(file: UploadFile = File(...)):
     content = await file.read()
     result = process_cnab_file(file.filename, content)
 
-    report_name = result["output_file"] + ".json"
-    report_path = result["output_path"] + ".json"
+    report_name = f"{file.filename}.report.json"
+    report_path = f"/tmp/{report_name}"
 
     with open(report_path, "w", encoding="utf-8") as f:
         json.dump(result, f, ensure_ascii=False, indent=2)
@@ -55,6 +62,7 @@ async def validate_and_fix_cnab_report(file: UploadFile = File(...)):
         filename=report_name,
         media_type="application/json",
     )
+
 
 @router.post("/cnab/parse")
 async def parse_cnab(file: UploadFile = File(...)):
